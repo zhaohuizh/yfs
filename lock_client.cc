@@ -33,11 +33,10 @@ lock_client::acquire(lock_protocol::lockid_t lid)
   int r;
   lock_protocol::status ret = cl->call(lock_protocol::acquire, cl->id(), lid, r);
   printf("acquire status: %d \n", ret);
-  while(ret != lock_protocol::OK){
+  /*while(ret != lock_protocol::OK){
     ret = cl->call(lock_protocol::acquire, cl->id(), lid, r);
-  }
+  }*/
   return r;
-
 }
 
 lock_protocol::status
