@@ -14,7 +14,12 @@ class lock_server {
 
  protected:
   int nacquire;
-  std::map<lock_protocol::lockid_t, bool> lock_map;
+  enum lock_status{
+    FREE,
+    LOCKED
+  };
+  
+  std::map<lock_protocol::lockid_t, lock_status> lock_map;
 
  public:
   lock_server();

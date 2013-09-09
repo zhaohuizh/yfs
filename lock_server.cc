@@ -31,12 +31,14 @@ lock_server::acquire(int clt, lock_protocol::lockid_t lid, int &r){
   lock_protocol::status ret;
   pthread_mutex_lock(&mutex);
   if(lock_map.find(lid) != lock_map.end()){
-    while(lock_map[lid] == true){
+    while(lock_map[lid] == lock_server::LOCKED){
       pthread_cond_wait(&threadhold, &mutex);
       printf("Signal received!\n");
     } 
   }
-  lock_map[lid] = true;
+  
+
+  lock_map[lid] = lock_server::LOCKED;
   pthread_mutex_unlock(&mutex);
   ret = lock_protocol::OK;
   return ret;
@@ -45,16 +47,16 @@ lock_server::acquire(int clt, lock_protocol::lockid_t lid, int &r){
 lock_protocol::status
 lock_server::release(int clt, lock_protocol::lockid_t lid, int &r){
   lock_protocol::status ret;
+  pthread_mutex_lock(&mutex);
   if(lock_map.find(lid) == lock_map.end()){
     ret = lock_protocol::NOENT;
   }else{
-    pthread_mutex_lock(&mutex);
-    lock_map[lid] = false;
-    pthread_cond_signal(&threadhold);
+    
+    lock_map[lid] = lock_server::FREE;
+    pthread_cond_broadcast(&threadhold);
     printf("Thread Hold reached!\n");
-
-    pthread_mutex_unlock(&mutex);
     ret = lock_protocol::OK;
   }
+  pthread_mutex_unlock(&mutex);
   return ret;
 }
