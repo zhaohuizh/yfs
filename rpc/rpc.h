@@ -296,7 +296,7 @@ class rpcs : public chanmgr {
 
 	// provide at most once semantics by maintaining a window of replies
 	// per client that that client hasn't acknowledged receiving yet.
-        // indexed by client nonce.
+  // indexed by client nonce.
 	std::map<unsigned int, std::list<reply_t> > reply_window_;
 
 	void free_reply_window(void);

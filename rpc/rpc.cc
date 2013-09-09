@@ -74,6 +74,8 @@
 #include "gettime.h"
 #include "lang/verify.h"
 
+using namespace std;
+
 const rpcc::TO rpcc::to_max = { 120000 };
 const rpcc::TO rpcc::to_min = { 1000 };
 
@@ -662,8 +664,40 @@ rpcs::checkduplicate_and_update(unsigned int clt_nonce, unsigned int xid,
 {
 	ScopedLock rwl(&reply_window_m_);
 
-        // You fill this in for Lab 1.
-	return NEW;
+  // You fill this in for Lab 1.
+  list<reply_t> records = reply_window_[clt_nonce];
+  list<reply_t>::iterator it = records.begin();
+  bool isEmpty = records.empty();
+  bool isForgotten = true;
+  while(it != records.end()){
+  	reply_t reply = * it;
+  	if(reply.xid < xid_rep){
+  		free(reply.buf);
+  		it = records.erase(it);
+  	}else{
+  		if(reply.xid == xid){
+  			if(reply.cb_present){
+  				*b = reply.buf;
+  				*sz = reply.sz;
+  				return DONE;
+  			}else{
+  				return INPROGRESS;
+  			}
+  		}else if(reply.xid < xid){
+  			isForgotten = false;
+  		}
+  		it++;
+  	}
+  	
+  }
+  if(isEmpty || !isForgotten){
+  	reply_t reply(xid);
+  	records.push_back(reply);
+  	return NEW;
+  }else{
+  	return FORGOTTEN;
+  }
+  
 }
 
 // rpcs::dispatch calls add_reply when it is sending a reply to an RPC,
@@ -676,7 +710,28 @@ rpcs::add_reply(unsigned int clt_nonce, unsigned int xid,
 		char *b, int sz)
 {
 	ScopedLock rwl(&reply_window_m_);
-        // You fill this in for Lab 1.
+  // You fill this in for Lab 1.
+  list<reply_t> records = reply_window_[clt_nonce];
+  list<reply_t>::iterator it = records.begin();
+  bool isExist = false;
+  while(it != records.end()){
+  	reply_t reply = * it;
+  	if(reply.xid == xid){
+  		isExist = true;
+  		reply.cb_present = true;
+  		reply.buf = *b;
+  		reply.sz = *sz;
+  		break;
+  	}
+  }
+  if(!isExist){
+  	reply_t new_record(xid);
+    new_record.cb_present = true;
+    new_record.buf = *b;
+    new_record.sz = *sz;
+    records.push_back(new_record);
+  }
+
 }
 
 void
