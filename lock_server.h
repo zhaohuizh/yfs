@@ -6,6 +6,7 @@
 
 #include <string>
 #include <map>
+#include <pthread.h>
 #include "lock_protocol.h"
 #include "lock_client.h"
 #include "rpc.h"
@@ -20,6 +21,7 @@ class lock_server {
   };
   
   std::map<lock_protocol::lockid_t, lock_status> lock_map;
+  std::map<lock_protocol::lockid_t, pthread_cond_t> threadhold_map;
 
  public:
   lock_server();
