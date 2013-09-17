@@ -665,25 +665,26 @@ rpcs::checkduplicate_and_update(unsigned int clt_nonce, unsigned int xid,
 	ScopedLock rwl(&reply_window_m_);
 
   // You fill this in for Lab 1.
-  list<reply_t> records = reply_window_[clt_nonce];
+
+  list<reply_t> &records = reply_window_[clt_nonce];
   list<reply_t>::iterator it = records.begin();
   bool isEmpty = records.empty();
   bool isForgotten = true;
   while(it != records.end()){
-  	reply_t reply = * it;
-  	if(reply.xid < xid_rep){
-  		free(reply.buf);
+  	//reply_t reply = * it;
+  	if(it->xid < xid_rep){
+  		free(it->buf);
   		it = records.erase(it);
   	}else{
-  		if(reply.xid == xid){
-  			if(reply.cb_present){
-  				*b = reply.buf;
-  				*sz = reply.sz;
+  		if(it->xid == xid){
+  			if(it->cb_present){
+  				*b = it->buf;
+  				*sz = it->sz;
   				return DONE;
   			}else{
   				return INPROGRESS;
   			}
-  		}else if(reply.xid < xid){
+  		}else if(it->xid < xid){
   			isForgotten = false;
   		}
   		it++;
@@ -698,6 +699,52 @@ rpcs::checkduplicate_and_update(unsigned int clt_nonce, unsigned int xid,
   	return FORGOTTEN;
   }
   
+  /*
+  //std::cout << "target xid: " << xid << '\n'; 
+  list<reply_t>::iterator it = reply_window_[clt_nonce].begin();
+  bool isNew = true;
+  bool isForgotten = true;
+  //std::cout << "iterator is the end? " << (it != reply_window_[clt_nonce].end()) << '\n';
+  while(it != reply_window_[clt_nonce].end()){
+  	//std::cout << "list is not empty! \n";
+  	reply_t reply = *it;
+  	//std::cout << "current xid: " <<  reply.xid << '\n';
+  	if(reply.xid < xid_rep){
+  		free(reply.buf);
+  		it = reply_window_[clt_nonce].erase(it);
+  	}else{
+  		if(reply.xid == xid){
+  			isNew = false;
+  			isForgotten = false;
+  			
+  			if(reply.cb_present){
+  				*b = reply.buf;
+  				*sz = reply.sz;
+  				return DONE;
+  			}else{
+  				return INPROGRESS;
+  			}
+  		}else if(reply.xid < xid){
+  			isForgotten = false;
+  		}
+  		++it;
+  	}
+  	
+  }
+
+  if(isForgotten && !isNew){
+  	//std::cout << "forgotten\n";
+  	return FORGOTTEN;
+  }
+  if(isNew){
+  	//std::cout << "add new to list: " << xid << '\n';
+  	reply_t reply(xid);
+  	reply_window_[clt_nonce].push_back(reply);
+  	return NEW;
+  }
+  return NEW; 
+  */
+  
 }
 
 // rpcs::dispatch calls add_reply when it is sending a reply to an RPC,
@@ -711,25 +758,17 @@ rpcs::add_reply(unsigned int clt_nonce, unsigned int xid,
 {
 	ScopedLock rwl(&reply_window_m_);
   // You fill this in for Lab 1.
-  list<reply_t> records = reply_window_[clt_nonce];
+  //std::cout << "ADD_REPLY: " << xid <<'\n';
+  list<reply_t> &records = reply_window_[clt_nonce];
   list<reply_t>::iterator it = records.begin();
-  bool isExist = false;
   while(it != records.end()){
-  	reply_t reply = * it;
-  	if(reply.xid == xid){
-  		isExist = true;
-  		reply.cb_present = true;
-  		reply.buf = *b;
-  		reply.sz = *sz;
+  	if(it->xid == xid){
+   		it->cb_present = true;
+  		it->buf = b;
+  		it->sz = sz;
   		break;
   	}
-  }
-  if(!isExist){
-  	reply_t new_record(xid);
-    new_record.cb_present = true;
-    new_record.buf = *b;
-    new_record.sz = *sz;
-    records.push_back(new_record);
+  	++it;
   }
 
 }

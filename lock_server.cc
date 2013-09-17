@@ -49,7 +49,6 @@ lock_server::acquire(int clt, lock_protocol::lockid_t lid, int &r){
   if(it == lock_map.end()){
     std::cout << lid << " lid not found, then create and lock \n";
     lock_map[lid] = lock_server::LOCKED;
-    &threadhold_map[lid] = new pthread_cond_t;
     pthread_cond_init(&threadhold_map[lid], NULL);
   }else if(it->second == lock_server::FREE){
     lock_map[lid] = lock_server::LOCKED;
