@@ -11,6 +11,8 @@
 #include "lock_client.h"
 #include "rpc.h"
 
+using namespace std;
+
 class lock_server {
 
  protected:
@@ -20,8 +22,8 @@ class lock_server {
     LOCKED
   };
   
-  std::map<lock_protocol::lockid_t, lock_status> lock_map;
-  std::map<lock_protocol::lockid_t, pthread_cond_t> threadhold_map;
+  map<lock_protocol::lockid_t, lock_status> lock_map;
+  map<lock_protocol::lockid_t, pthread_cond_t> threadhold_map;
 
  public:
   lock_server();
