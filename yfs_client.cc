@@ -13,7 +13,6 @@
 yfs_client::yfs_client(std::string extent_dst, std::string lock_dst)
 {
   ec = new extent_client(extent_dst);
-
 }
 
 yfs_client::inum
@@ -65,7 +64,7 @@ yfs_client::getfile(inum inum, fileinfo &fin)
   fin.size = a.size;
   printf("getfile %016llx -> sz %llu\n", inum, fin.size);
 
- release:
+  release:
 
   return r;
 }
@@ -85,9 +84,14 @@ yfs_client::getdir(inum inum, dirinfo &din)
   din.mtime = a.mtime;
   din.ctime = a.ctime;
 
- release:
+  release:
   return r;
 }
 
-
+int
+yfs_client::create_file(inum par_inum, const char * name){
+  status ret;
+  ret = yfs_client::OK;
+  return ret;
+}
 

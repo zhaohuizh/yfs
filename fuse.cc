@@ -220,6 +220,24 @@ fuseserver_createhelper(fuse_ino_t parent, const char *name,
   e->entry_timeout = 0.0;
   e->generation = 0;
   // You fill this in for Lab 2
+  yfs_client::status ret;
+  yfs_client::inum par_inum = parent;
+
+  // check whether file name exists in parent dir
+  std::list<yfs_client::dirent> list = yfs->dir_dirent_map[par_inum];
+  std::list<yfs_client::dirent>::iterator it = list.begin();
+  while(it != list.end()){
+    if(strcmp(name, (*it).name.c_str()) == 0){
+      ret = yfs_client::EXIST;
+      return ret;
+    }
+    ++it;
+  }
+
+  //yfs_client::inum file_inum = yfs->generate_inum(name);
+  ret = yfs->create_file(par_inum, name);
+
+
   return yfs_client::NOENT;
 }
 

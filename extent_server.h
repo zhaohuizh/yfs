@@ -13,7 +13,12 @@ class extent_server {
  public:
   extent_server();
 
-  std::map<extent_protocol::extentid_t, std::string> extent_map;
+  struct extent{
+  	std::string content;
+  	extent_protocol::attr * attribute;
+  };
+
+  std::map<extent_protocol::extentid_t, extent *> extent_map;
   pthread_mutex_t mutex;
 
   int put(extent_protocol::extentid_t id, std::string, int &);
