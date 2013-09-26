@@ -224,20 +224,27 @@ fuseserver_createhelper(fuse_ino_t parent, const char *name,
   yfs_client::inum par_inum = parent;
 
   // check whether file name exists in parent dir
-  std::list<yfs_client::dirent> list = yfs->dir_dirent_map[par_inum];
-  std::list<yfs_client::dirent>::iterator it = list.begin();
-  while(it != list.end()){
-    if(strcmp(name, (*it).name.c_str()) == 0){
-      ret = yfs_client::EXIST;
-      return ret;
-    }
-    ++it;
+  if(yfs->is_exist(par_inum, name)){
+    ret = yfs_client::EXIST;
+    return ret;
   }
 
-  //yfs_client::inum file_inum = yfs->generate_inum(name);
-  ret = yfs->create_file(par_inum, name);
+  // generate random inum for file
+  yfs_client::inum file_inum = yfs->generate_inum(name);
+  
+  // create file
+  ret = yfs->create_file(par_inum, file_inum, name);
 
-
+  if(ret == yfs_client::OK){
+    e->ino = file_inum;
+    struct stat st;
+    // get the file's attribute
+    ret = getattr(file_inum, st);
+    if(ret == yfs_client::OK){
+      e->attr = st;
+      return ret;
+    }
+  }
   return yfs_client::NOENT;
 }
 
@@ -289,6 +296,16 @@ fuseserver_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
   bool found = false;
 
   // You fill this in for Lab 2
+  yfs_client::inum par_inum = parent;
+  if(yfs->is_exist(par_inum, name)){
+    found = true;
+    yfs_client::inum file_inum = yfs->get_inum(par_inum, name);
+    e.ino = file_inum;
+    struct stat st;
+    getattr(file_inum, st);
+    e.attr = st;
+  }
+
   if (found)
     fuse_reply_entry(req, &e);
   else
