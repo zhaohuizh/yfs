@@ -216,6 +216,7 @@ fuseserver_createhelper(fuse_ino_t parent, const char *name,
                         mode_t mode, struct fuse_entry_param *e)
 {
   // In yfs, timeouts are always set to 0.0, and generations are always set to 0
+  printf("Create Helper Begin!");
   e->attr_timeout = 0.0;
   e->entry_timeout = 0.0;
   e->generation = 0;
@@ -237,15 +238,13 @@ fuseserver_createhelper(fuse_ino_t parent, const char *name,
 
   if(ret == yfs_client::OK){
     e->ino = file_inum;
-    struct stat st;
     // get the file's attribute
-    ret = getattr(file_inum, st);
+    ret = getattr(file_inum, e->attr);
     if(ret == yfs_client::OK){
-      e->attr = st;
       return ret;
     }
   }
-  return yfs_client::NOENT;
+  return ret;
 }
 
 void
@@ -367,7 +366,18 @@ fuseserver_readdir(fuse_req_t req, fuse_ino_t ino, size_t size,
 
 
   // You fill this in for Lab 2
-
+  std::list<yfs_client::dirent> dirent_list;
+  if(!yfs->get_dir_ent(inum, dirent_list)){
+    fuse_reply_err(req, ENOENT);
+    return;
+  }
+  
+  // for each entry, call dirbuf_add
+  std::list<yfs_client::dirent>::iterator it = dirent_list.begin();
+  while(it != dirent_list.end()){
+    dirbuf_add(&b, (*it).name.c_str(), (*it).inum);
+    ++it;
+  }
 
   reply_buf_limited(req, b.p, b.size, off, size);
   free(b.p);
