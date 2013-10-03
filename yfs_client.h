@@ -4,8 +4,6 @@
 #include "extent_client.h"
 #include "lock_client.h"
 #include <string>
-// #include <vector>
-// #include <map>
 #include <list>
 
 
@@ -60,8 +58,9 @@ class yfs_client {
   int get_inum(inum, const char *, inum &);
   //inum generate_inum(const char *);
   int get_dir_ent(inum, std::list<dirent> &);
-  int set_attr_size(inum, unsigned int);
+  int set_attr_size(inum, size_t);
   int read(inum, size_t, off_t, std::string &);
+  int write(inum, const char *, size_t, off_t);
 
   std::string serialize(std::list<dirent>);
   std::string serialize_dirent(yfs_client::dirent);

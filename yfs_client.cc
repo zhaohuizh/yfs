@@ -8,17 +8,13 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <cstdlib>
-//#include <string>
 
 
 
 yfs_client::yfs_client(std::string extent_dst, std::string lock_dst)
 {
   ec = new extent_client(extent_dst);
-  printf("new extent_client \n");
-  // lc = new lock_client(lock_dst);
-  // lc = lock_dst;
-  // create root directory
+  // create root
   inum root_inum = 0x00000001;
   std::string str("");
   if(ec->put(root_inum, str) == extent_protocol::OK){
@@ -114,7 +110,6 @@ yfs_client::generate_inum(const char * name, bool isFile){
   }else{
     file_inum &= 0x7FFFFFFF;
   }
-  printf("random number %016llx\n", file_inum);
   return file_inum;
 }
 
@@ -138,7 +133,6 @@ yfs_client::create_file(inum par_inum, const char * name, inum & file_inum, bool
     ret = IOERR;
     goto release;
   }
-  printf("CREATE_FILE: save succeed\n");
   
 
   // add entry to parent directory
@@ -148,18 +142,14 @@ yfs_client::create_file(inum par_inum, const char * name, inum & file_inum, bool
     goto release;
   }
 
-  std::cout << "CREATE_FILE: former content " << former_content << std::endl;
-
   // update directory content and attributes
   former_content.append(yfs_client::serialize_dirent(file_dirent));
 
-  std::cout << "CREATE_FILE: after content " << former_content << std::endl;
   if(ec->put(par_inum, former_content) != extent_protocol::OK){
     ret = IOERR;
     goto release;
   }
 
-  printf("CREATE_FILE: update parent content succeed\n");
   ret = yfs_client::OK;
 
   release:
@@ -175,24 +165,17 @@ yfs_client::is_exist(inum par_inum, const char * name){
     printf("IS_EXIST: get dir content fail \n");
   }
 
-  std::cout << "IS_EXIST: get dir content succeed: " << dir_content << std::endl;
 
   std::list<yfs_client::dirent> list = yfs_client::unserialize(dir_content);
-  printf("IS_EXIST: list size %lu\n", list.size());
 
   // std::list<yfs_client::dirent> &list = yfs_client::dir_dirent_map[par_inum];
-  printf("IS_EXIST: iterator before\n");
   std::list<yfs_client::dirent>::iterator it = list.begin();
-  printf("IS_EXIST: iterator begin\n");
   while(it != list.end()){
-    printf("IS_EXIST: iterator name %s\n", (*it).name.c_str());
     if(strcmp(name, (*it).name.c_str()) == 0){
-      printf("IS_EXIST: return true \n");
       return true;
     }
     ++it;
   }
-  printf("IS_EXIST: return false\n");
   return false;
 }
 
@@ -206,10 +189,8 @@ yfs_client::get_inum(inum par_inum, const char * name, inum & file_inum){
     ret = IOERR;
     return ret;
   }
-  std::cout << "GET_INUM: get parent content succeed " << dir_content << ")))" << std::endl;
-  std::list<yfs_client::dirent> list = yfs_client::unserialize(dir_content);
 
-  std::cout << "GET_INUM: unserialize succeed with list size " << list.size() << std::endl;
+  std::list<yfs_client::dirent> list = yfs_client::unserialize(dir_content);
   //std::list<yfs_client::dirent> &list = yfs_client::dir_dirent_map[par_inum];
   
   std::list<yfs_client::dirent>::iterator it = list.begin();
@@ -281,7 +262,7 @@ yfs_client::get_dir_ent(inum par_inum, std::list<dirent> &list){
 }
 
 int
-yfs_client::set_attr_size(inum file_inum, unsigned int size){
+yfs_client::set_attr_size(inum file_inum, size_t size){
   yfs_client::status ret;
   std::string content;
   std::string new_content;
@@ -289,28 +270,24 @@ yfs_client::set_attr_size(inum file_inum, unsigned int size){
     ret = NOENT;
     goto release;
   }
-  
-  if(size > 0){
-    /*
-    extent_protocol::attr a;
-    if(ec->getattr(file_inum, a) != extent_protocol::OK){
-      ret = IOERR;
-      goto release;
-    }
 
-    */
-
+  if((int)size >= 0){
     
-    if(!ec->get(file_inum, content) != extent_protocol::OK){
+    extent_protocol::status rr = ec->get(file_inum, content);
+    if(ec->get(file_inum, content) != extent_protocol::OK){
       ret = IOERR;
       goto release;
     }
-    if(size < content.size()){
-      new_content = content.substr(0, content.size());
-    }else if(size > content.size()){
+    if((int)size < content.size()){
+      new_content = content.substr(0, size);
+    }else if((int)size > content.size()){
       new_content = content;
       new_content.append(size - content.size(), '\0');
+    }else{
+      ret = OK;
+      goto release;
     }
+
     if(ec->put(file_inum, new_content) != extent_protocol::OK){
       ret = IOERR;
       goto release;
@@ -333,8 +310,8 @@ yfs_client::read(inum file_inum, size_t size, off_t off, std::string &buf){
     goto release;
   }
 
-  if((size_t)off < content.size()){
-    buf = content.substr((size_t)off, size);
+  if(off < content.size()){
+    buf = content.substr(off, size);
   }
 
   ret = yfs_client::OK;
@@ -342,4 +319,40 @@ yfs_client::read(inum file_inum, size_t size, off_t off, std::string &buf){
   release:
   return ret;
 
+}
+
+int
+yfs_client::write(inum file_inum, const char * buf, size_t size, off_t off){
+  yfs_client::status ret;
+  std::string content;
+  std::string added_content;
+  std::string new_content;
+  if(ec->get(file_inum, content) != extent_protocol::OK){
+    ret = IOERR;
+    goto release;
+  }
+
+  added_content.append(buf, size);
+
+  if(off <= content.size()){
+    new_content.append(content.substr(0, off));
+    new_content.append(added_content);
+    if(off + size < content.size()){
+      new_content.append(content.substr(off + size));
+    }
+  }else{
+    new_content.append(content);
+    new_content.append(off - content.size(), '\0');
+    new_content.append(added_content);
+  }
+
+  if(ec->put(file_inum, new_content) != extent_protocol::OK){
+    ret = IOERR;
+    goto release;
+  }
+
+  ret = OK;
+
+  release:
+  return ret;
 }

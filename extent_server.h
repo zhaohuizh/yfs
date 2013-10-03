@@ -15,7 +15,7 @@ class extent_server {
 
   struct extent{
   	std::string content;
-  	extent_protocol::attr * attribute;
+  	extent_protocol::attr attribute;
   };
 
   std::map<extent_protocol::extentid_t, extent> extent_map;
