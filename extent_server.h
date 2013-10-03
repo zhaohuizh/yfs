@@ -18,7 +18,7 @@ class extent_server {
   	extent_protocol::attr * attribute;
   };
 
-  std::map<extent_protocol::extentid_t, extent *> extent_map;
+  std::map<extent_protocol::extentid_t, extent> extent_map;
   pthread_mutex_t mutex;
 
   int put(extent_protocol::extentid_t id, std::string, int &);

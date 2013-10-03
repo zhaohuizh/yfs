@@ -715,7 +715,7 @@ rpcs::add_reply(unsigned int clt_nonce, unsigned int xid,
 {
 	ScopedLock rwl(&reply_window_m_);
   // You fill this in for Lab 1.
-  cout << "ADD_REPLY: " << xid <<'\n';
+  // cout << "ADD_REPLY: " << xid <<'\n';
   list<reply_t> &records = reply_window_[clt_nonce];
   list<reply_t>::iterator it = records.begin();
   while(it != records.end()){

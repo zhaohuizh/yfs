@@ -37,14 +37,14 @@ class yfs_client {
     yfs_client::inum inum;
   };
 
-  std::map<yfs_client::inum, std::list<dirent> > dir_dirent_map;
+  // std::map<yfs_client::inum, std::list<dirent> > dir_dirent_map;
 
  private:
   
   static std::string filename(inum);
   static inum n2i(std::string);
+  static inum generate_inum(const char *, bool);
   
-
  public:
 
   yfs_client(std::string, std::string);
@@ -54,12 +54,14 @@ class yfs_client {
 
   int getfile(inum, fileinfo &);
   int getdir(inum, dirinfo &);
-  int create_file(inum, inum, const char *);
+  int create_file(inum, const char *, inum &, bool);
 
   bool is_exist(inum, const char *);
-  inum get_inum(inum, const char *);
-  inum generate_inum(const char *);
+  int get_inum(inum, const char *, inum &);
+  //inum generate_inum(const char *);
   int get_dir_ent(inum, std::list<dirent> &);
+  int set_attr_size(inum, unsigned int);
+  int read(inum, size_t, off_t, std::string &);
 
   std::string serialize(std::list<dirent>);
   std::string serialize_dirent(yfs_client::dirent);
