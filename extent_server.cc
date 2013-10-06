@@ -10,9 +10,7 @@
 #include <time.h>
 
 extent_server::extent_server() {
-  printf("extent_server initial \n");
   pthread_mutex_init(&mutex, NULL);
-  printf("mutex created! \n");
 }
 
 

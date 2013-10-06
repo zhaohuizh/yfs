@@ -252,7 +252,14 @@ fuseserver_createhelper(fuse_ino_t parent, const char *name,
   yfs_client::inum par_inum = parent;
 
   // check whether file name exists in parent dir
-  if(yfs->is_exist(par_inum, name)){
+  bool isexist;
+  ret = yfs->is_exist(par_inum, name, isexist);
+
+  if(ret != yfs_client::OK){
+    return ret;
+  }
+
+  if(isexist){
     ret = yfs_client::EXIST;
     return ret;
   }
@@ -262,7 +269,7 @@ fuseserver_createhelper(fuse_ino_t parent, const char *name,
   
   // create file
   yfs_client::inum file_inum;
-  ret = yfs->create_file(par_inum, name, file_inum, true);
+  ret = yfs->create(par_inum, name, file_inum, true);
 
   if(ret == yfs_client::OK){
     struct stat st;
@@ -445,8 +452,43 @@ fuseserver_mkdir(fuse_req_t req, fuse_ino_t parent, const char *name,
   (void) e;
 
   // You fill this in for Lab 3
-#if 0
-  fuse_reply_entry(req, &e);
+#if 1
+  yfs_client::inum par_inum = parent;
+
+  yfs_client::status ret;
+
+  bool isexist;
+  ret = yfs->is_exist(par_inum, name, isexist);
+
+  if(ret != yfs_client::OK){
+    fuse_reply_err(req, ENOSYS);
+  }
+
+  if(isexist){
+    fuse_reply_err(req, EEXIST);
+  }
+
+  // create file
+  yfs_client::inum dir_inum;
+  ret = yfs->create(par_inum, name, dir_inum, false);
+
+  if(ret == yfs_client::OK){
+    struct stat st;
+    e.ino = dir_inum;
+    // get the file's attribute
+    ret = getattr(dir_inum, st);
+    if(ret == yfs_client::OK){
+      e.attr = st;
+      fuse_reply_entry(req, &e);
+    }else{
+      fuse_reply_err(req, ENOSYS);
+    }
+  }else{
+    fuse_reply_err(req, ENOSYS);
+  }
+
+
+  
 #else
   fuse_reply_err(req, ENOSYS);
 #endif
@@ -466,7 +508,30 @@ fuseserver_unlink(fuse_req_t req, fuse_ino_t parent, const char *name)
   // You fill this in for Lab 3
   // Success:	fuse_reply_err(req, 0);
   // Not found:	fuse_reply_err(req, ENOENT);
-  fuse_reply_err(req, ENOSYS);
+
+  yfs_client::inum par_inum = parent;
+
+  yfs_client::status ret;
+
+  bool isexist;
+  ret = yfs->is_exist(par_inum, name, isexist);
+
+  if(ret != yfs_client::OK){
+    fuse_reply_err(req, ENOSYS);
+    return;
+  }
+
+  if(!isexist){
+    fuse_reply_err(req, ENOENT);
+    return;
+  }
+
+  ret = yfs->unlink(par_inum, name);
+  if(ret != yfs_client::OK){
+    fuse_reply_err(req, ENOSYS);
+  }else{
+    fuse_reply_err(req, 0);
+  }
 }
 
 void

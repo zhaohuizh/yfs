@@ -8,6 +8,8 @@
 
 
 
+#include "lock_protocol.h"
+#include "lock_client.h"
 
 class yfs_client {
   extent_client* ec;
@@ -52,15 +54,16 @@ class yfs_client {
 
   int getfile(inum, fileinfo &);
   int getdir(inum, dirinfo &);
-  int create_file(inum, const char *, inum &, bool);
+  int create(inum, const char *, inum &, bool);
 
-  bool is_exist(inum, const char *);
+  int is_exist(inum, const char *, bool &);
   int get_inum(inum, const char *, inum &);
   //inum generate_inum(const char *);
   int get_dir_ent(inum, std::list<dirent> &);
   int set_attr_size(inum, size_t);
   int read(inum, size_t, off_t, std::string &);
   int write(inum, const char *, size_t, off_t);
+  int unlink(inum, const char *);
 
   std::string serialize(std::list<dirent>);
   std::string serialize_dirent(yfs_client::dirent);

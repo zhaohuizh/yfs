@@ -1,5 +1,7 @@
 // yfs client.  implements FS operations using extent and lock server
 #include "yfs_client.h"
+#include "extent_client.h"
+#include "lock_client.h"
 #include <sstream>
 #include <iostream>
 #include <stdio.h>
@@ -59,6 +61,8 @@ int
 yfs_client::getfile(inum inum, fileinfo &fin)
 {
   int r = OK;
+  // You modify this function for Lab 3
+  // - hold and release the file lock
 
   // lc->acquire(inum);
   printf("getfile %016llx\n", inum);
@@ -83,6 +87,8 @@ int
 yfs_client::getdir(inum inum, dirinfo &din)
 {
   int r = OK;
+  // You modify this function for Lab 3
+  // - hold and release the directory lock
 
   // lc->acquire(inum);
   printf("getdir %016llx\n", inum);
@@ -114,7 +120,7 @@ yfs_client::generate_inum(const char * name, bool isFile){
 }
 
 int
-yfs_client::create_file(inum par_inum, const char * name, inum & file_inum, bool isFile){
+yfs_client::create(inum par_inum, const char * name, inum & file_inum, bool isFile){
   status ret;
   
   // call extent_client::put to save file
@@ -157,26 +163,35 @@ yfs_client::create_file(inum par_inum, const char * name, inum & file_inum, bool
   return ret;
 }
 
-bool 
-yfs_client::is_exist(inum par_inum, const char * name){
+int
+yfs_client::is_exist(inum par_inum, const char * name, bool & isexist){
   
+  yfs_client::status ret;
   std::string dir_content;
+  isexist = false;
+  std::list<yfs_client::dirent> list;
+  std::list<yfs_client::dirent>::iterator it;
+
   if(ec->get(par_inum, dir_content)!= extent_protocol::OK){
-    printf("IS_EXIST: get dir content fail \n");
+    ret = yfs_client::IOERR;
+    goto release;
   }
 
-
-  std::list<yfs_client::dirent> list = yfs_client::unserialize(dir_content);
-
-  // std::list<yfs_client::dirent> &list = yfs_client::dir_dirent_map[par_inum];
-  std::list<yfs_client::dirent>::iterator it = list.begin();
+  list = yfs_client::unserialize(dir_content);
+  it = list.begin();
+  
   while(it != list.end()){
     if(strcmp(name, (*it).name.c_str()) == 0){
-      return true;
+      isexist = true;
+      break;
     }
     ++it;
   }
-  return false;
+
+  ret = yfs_client::OK;
+
+  release:
+  return ret;
 }
 
 int
@@ -226,6 +241,7 @@ yfs_client::serialize(std::list<yfs_client::dirent> dirent_list){
     result.append(":");
     result.append((*it).name);
     result.append(";");
+    ++it;
   }
   return result;
 }
@@ -355,4 +371,62 @@ yfs_client::write(inum file_inum, const char * buf, size_t size, off_t off){
 
   release:
   return ret;
+}
+
+int 
+yfs_client::unlink(yfs_client::inum par_inum, const char * name){
+  yfs_client::status ret;
+
+  yfs_client::inum file_inum;
+  
+  // get the inum and remove the entry
+  std::string dir_content;
+  std::string dir_content_update;
+  std::list<yfs_client::dirent> list;
+  std::list<yfs_client::dirent>::iterator it;
+  if(ec->get(par_inum, dir_content)!= extent_protocol::OK){
+    ret = IOERR;
+    goto release;
+  }
+
+  printf("un serialize content\n");
+  list = yfs_client::unserialize(dir_content);
+  
+  it = list.begin();
+  while(it != list.end()){
+    if(strcmp(name, (*it).name.c_str()) == 0){
+      file_inum = (*it).inum;
+      if(isdir(file_inum)){
+        ret = yfs_client::NOENT;
+        goto release;
+      }else{
+        printf("erase \n");
+        it = list.erase(it);
+        break;
+      }
+    }
+    ++it;
+  }
+
+  // update directory
+  dir_content_update = yfs_client::serialize(list);
+  printf("new content finish! \n");
+  ret = ec->put(par_inum, dir_content_update);
+  if(ret != yfs_client::OK){
+    ret = yfs_client::IOERR;
+    goto release;
+  }
+
+  ret = ec->remove(file_inum);
+  if(ret != yfs_client::OK){
+    ret = yfs_client::IOERR;
+    goto release;
+  }
+  
+  ret = yfs_client::OK;
+
+
+  release:
+  return ret;
+
 }
