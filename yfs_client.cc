@@ -16,6 +16,7 @@
 yfs_client::yfs_client(std::string extent_dst, std::string lock_dst)
 {
   ec = new extent_client(extent_dst);
+  lc = new lock_client(lock_dst);
   // create root
   inum root_inum = 0x00000001;
   std::string str("");
@@ -124,7 +125,7 @@ yfs_client::create(inum par_inum, const char * name, inum & file_inum, bool isFi
   status ret;
   
   // call extent_client::put to save file
-  // lc->acquire(file_inum);
+  lc->acquire(par_inum);
   file_inum = yfs_client::generate_inum(name, isFile);
   std::string inial_content;
 
@@ -159,7 +160,7 @@ yfs_client::create(inum par_inum, const char * name, inum & file_inum, bool isFi
   ret = yfs_client::OK;
 
   release:
-  // lc->release(file_inum);
+  lc->release(par_inum);
   return ret;
 }
 
@@ -279,6 +280,8 @@ yfs_client::get_dir_ent(inum par_inum, std::list<dirent> &list){
 
 int
 yfs_client::set_attr_size(inum file_inum, size_t size){
+  //acquire the lock
+  lc->acquire(file_inum);
   yfs_client::status ret;
   std::string content;
   std::string new_content;
@@ -313,6 +316,7 @@ yfs_client::set_attr_size(inum file_inum, size_t size){
   ret = OK;
 
   release:
+  lc->release(file_inum);
   return ret;
 
 }
@@ -339,6 +343,8 @@ yfs_client::read(inum file_inum, size_t size, off_t off, std::string &buf){
 
 int
 yfs_client::write(inum file_inum, const char * buf, size_t size, off_t off){
+  // acquire the lock client
+  lc->acquire(file_inum);
   yfs_client::status ret;
   std::string content;
   std::string added_content;
@@ -370,11 +376,15 @@ yfs_client::write(inum file_inum, const char * buf, size_t size, off_t off){
   ret = OK;
 
   release:
+  lc->release(file_inum);
   return ret;
 }
 
 int 
 yfs_client::unlink(yfs_client::inum par_inum, const char * name){
+  // acquire the lock client
+  lc->acquire(par_inum);
+
   yfs_client::status ret;
 
   yfs_client::inum file_inum;
@@ -425,8 +435,8 @@ yfs_client::unlink(yfs_client::inum par_inum, const char * name){
   
   ret = yfs_client::OK;
 
-
   release:
+  lc->release(par_inum);
   return ret;
 
 }
