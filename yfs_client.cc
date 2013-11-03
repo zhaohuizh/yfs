@@ -16,7 +16,7 @@
 yfs_client::yfs_client(std::string extent_dst, std::string lock_dst)
 {
   ec = new extent_client(extent_dst);
-  lc = new lock_client(lock_dst);
+  lc = new lock_client_cache(lock_dst);
   // create root
   inum root_inum = 0x00000001;
   std::string str("");
@@ -109,7 +109,7 @@ yfs_client::getdir(inum inum, dirinfo &din)
 
 
 yfs_client::inum
-yfs_client::generate_inum(const char * name, bool isFile){
+yfs_client::generate_inum(bool isFile){
   inum file_inum;
   file_inum = std::rand();
   if(isFile){
@@ -126,7 +126,7 @@ yfs_client::create(inum par_inum, const char * name, inum & file_inum, bool isFi
   
   // call extent_client::put to save file
   lc->acquire(par_inum);
-  file_inum = yfs_client::generate_inum(name, isFile);
+  file_inum = yfs_client::generate_inum(isFile);
   std::string inial_content;
 
   std::string former_content;
@@ -290,16 +290,16 @@ yfs_client::set_attr_size(inum file_inum, size_t size){
     goto release;
   }
 
-  if((int)size >= 0){
+  if(size >= 0){
     
     extent_protocol::status rr = ec->get(file_inum, content);
     if(ec->get(file_inum, content) != extent_protocol::OK){
       ret = IOERR;
       goto release;
     }
-    if((int)size < content.size()){
+    if(size < content.size()){
       new_content = content.substr(0, size);
-    }else if((int)size > content.size()){
+    }else if(size > content.size()){
       new_content = content;
       new_content.append(size - content.size(), '\0');
     }else{

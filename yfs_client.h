@@ -9,11 +9,11 @@
 
 
 #include "lock_protocol.h"
-#include "lock_client.h"
+#include "lock_client_cache.h"
 
 class yfs_client {
   extent_client* ec;
-  lock_client* lc;
+  lock_client_cache* lc;
   
  public:
 
@@ -43,7 +43,7 @@ class yfs_client {
   
   static std::string filename(inum);
   static inum n2i(std::string);
-  static inum generate_inum(const char *, bool);
+  static inum generate_inum(bool);
   
  public:
 

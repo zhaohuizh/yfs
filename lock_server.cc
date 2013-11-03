@@ -29,18 +29,18 @@ lock_server::acquire(int clt, lock_protocol::lockid_t lid, int &r){
   pthread_mutex_lock(&mutex);
   map<lock_protocol::lockid_t, lock_status>::iterator it = lock_map.find(lid);
   if(it == lock_map.end()){
-    cout << lid << " lid not found, then create and lock \n";
+    // cout << lid << " lid not found, then create and lock \n";
     pthread_cond_init(&threadhold_map[lid], NULL);
   }else{
     while(it->second != lock_server::FREE){
-      cout << "cond wait: " << lid << '\n';
+      // cout << "cond wait: " << lid << '\n';
       pthread_cond_wait(&threadhold_map[lid], &mutex);
-      cout << "cond received: " << lid << '\n';
+      // cout << "cond received: " << lid << '\n';
     }
-    cout << "loop out" << '\n';
+    // cout << "loop out" << '\n';
   }
   lock_map[lid] = lock_server::LOCKED;
-  cout << "lock gained" << '\n';
+  // cout << "lock gained" << '\n';
   pthread_mutex_unlock(&mutex);
   
   ret = lock_protocol::OK;
@@ -54,7 +54,7 @@ lock_server::release(int clt, lock_protocol::lockid_t lid, int &r){
   pthread_mutex_lock(&mutex);
   lock_map[lid] = lock_server::FREE;
   pthread_cond_signal(&threadhold_map[lid]);
-  cout << lid << " freed!\n";
+  // cout << lid << " freed!\n";
   pthread_mutex_unlock(&mutex);
 
   ret = lock_protocol::OK;

@@ -5,6 +5,8 @@
 #define lock_client_cache_h
 
 #include <string>
+#include <map>
+#include <pthread.h>
 #include "lock_protocol.h"
 #include "rpc.h"
 #include "lock_client.h"
@@ -25,15 +27,37 @@ class lock_client_cache : public lock_client {
   int rlock_port;
   std::string hostname;
   std::string id;
+  enum client_state{
+    NONE,
+    FREE,
+    LOCKED,
+    ACQUIRING,
+    RELEASING
+  };
+
+  std::map<lock_protocol::lockid_t, lock_client_cache::client_state> client_state_map;
+  std::map<lock_protocol::lockid_t, pthread_cond_t> acquire_threadhold_map;
+  std::map<lock_protocol::lockid_t, pthread_cond_t> revoke_threadhold_map;
+  std::map<lock_protocol::lockid_t, pthread_cond_t> retry_threadhold_map;
+  std::map<lock_protocol::lockid_t, pthread_mutex_t> mutex_map;
+  pthread_mutex_t retry_mutex;
+  pthread_mutex_t revoke_mutex;
+  pthread_cond_t retry_threadhold;
+  pthread_cond_t revoke_threadhold;
+  std::list<lock_protocol::lockid_t> retry_lists;
+  std::list<lock_protocol::lockid_t> release_lists;
+
+
  public:
   lock_client_cache(std::string xdst, class lock_release_user *l = 0);
   virtual ~lock_client_cache() {};
   lock_protocol::status acquire(lock_protocol::lockid_t);
   lock_protocol::status release(lock_protocol::lockid_t);
-  rlock_protocol::status revoke_handler(lock_protocol::lockid_t, 
-                                        int &);
-  rlock_protocol::status retry_handler(lock_protocol::lockid_t, 
-                                       int &);
+  rlock_protocol::status revoke_handler(lock_protocol::lockid_t, int &);
+  rlock_protocol::status retry_handler(lock_protocol::lockid_t, int &);
+  void retry_loop();
+  void release_loop();
+
 };
 
 

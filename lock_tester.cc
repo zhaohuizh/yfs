@@ -192,12 +192,12 @@ main(int argc, char *argv[])
     if(!test || test == 2){
       // test2
       for (int i = 0; i < nt; i++) {
-	int *a = new int (i);
-	r = pthread_create(&th[i], NULL, test2, (void *) a);
-	VERIFY (r == 0);
+	      int *a = new int (i);
+	      r = pthread_create(&th[i], NULL, test2, (void *) a);
+	      VERIFY (r == 0);
       }
       for (int i = 0; i < nt; i++) {
-	pthread_join(th[i], NULL);
+	      pthread_join(th[i], NULL);
       }
     }
 

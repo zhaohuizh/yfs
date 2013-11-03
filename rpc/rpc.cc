@@ -676,7 +676,7 @@ rpcs::checkduplicate_and_update(unsigned int clt_nonce, unsigned int xid,
   bool isForgotten = true;
   while(it != records.end()){
   	if(it->xid < xid_rep){
-  		free(it->buf);
+  		// free(it->buf);
   		it = records.erase(it);
   	}else{
   		if(it->xid == xid){
