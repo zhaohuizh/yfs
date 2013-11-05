@@ -36,9 +36,10 @@ class lock_client_cache : public lock_client {
   };
 
   std::map<lock_protocol::lockid_t, lock_client_cache::client_state> client_state_map;
-  std::map<lock_protocol::lockid_t, pthread_cond_t> acquire_threadhold_map;
+  std::map<lock_protocol::lockid_t, pthread_cond_t> lock_threadhold_map;
+  // std::map<lock_protocol::lockid_t, pthread_cond_t> acquire_threadhold_map;
   std::map<lock_protocol::lockid_t, pthread_cond_t> revoke_threadhold_map;
-  std::map<lock_protocol::lockid_t, pthread_cond_t> retry_threadhold_map;
+  // std::map<lock_protocol::lockid_t, pthread_cond_t> retry_threadhold_map;
   std::map<lock_protocol::lockid_t, pthread_mutex_t> mutex_map;
   pthread_mutex_t retry_mutex;
   pthread_mutex_t revoke_mutex;
