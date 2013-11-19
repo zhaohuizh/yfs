@@ -163,7 +163,6 @@ lock_server_cache::stat(lock_protocol::lockid_t lid, int &r)
 }
 
 
-
 void
 lock_server_cache::retry_loop(){
   

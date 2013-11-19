@@ -252,20 +252,17 @@ fuseserver_createhelper(fuse_ino_t parent, const char *name,
   yfs_client::inum par_inum = parent;
 
   // check whether file name exists in parent dir
-  bool isexist;
-  ret = yfs->is_exist(par_inum, name, isexist);
+  // bool isexist;
+  // ret = yfs->is_exist(par_inum, name, isexist);
 
-  if(ret != yfs_client::OK){
-    return ret;
-  }
+  // if(ret != yfs_client::OK){
+  //   return ret;
+  // }
 
-  if(isexist){
-    ret = yfs_client::EXIST;
-    return ret;
-  }
-  
-  // generate random inum for file
-  // yfs_client::inum file_inum = yfs->generate_inum(name);
+  // if(isexist){
+  //   ret = yfs_client::EXIST;
+  //   return ret;
+  // }
   
   // create file
   yfs_client::inum file_inum;
@@ -413,6 +410,7 @@ fuseserver_readdir(fuse_req_t req, fuse_ino_t ino, size_t size,
   // for each entry, call dirbuf_add
   std::list<yfs_client::dirent>::iterator it = dirent_list.begin();
   while(it != dirent_list.end()){
+    //printf("readdir : %s %llu %d\n", (*it).name.c_str(), (*it).inum, dirent_list.size());
     dirbuf_add(&b, (*it).name.c_str(), (*it).inum);
     ++it;
   }
@@ -457,17 +455,6 @@ fuseserver_mkdir(fuse_req_t req, fuse_ino_t parent, const char *name,
 
   yfs_client::status ret;
 
-  bool isexist;
-  ret = yfs->is_exist(par_inum, name, isexist);
-
-  if(ret != yfs_client::OK){
-    fuse_reply_err(req, ENOSYS);
-  }
-
-  if(isexist){
-    fuse_reply_err(req, EEXIST);
-  }
-
   // create file
   yfs_client::inum dir_inum;
   ret = yfs->create(par_inum, name, dir_inum, false);
@@ -483,6 +470,8 @@ fuseserver_mkdir(fuse_req_t req, fuse_ino_t parent, const char *name,
     }else{
       fuse_reply_err(req, ENOSYS);
     }
+  }else if(ret == yfs_client::EXIST){
+    fuse_reply_err(req, EEXIST);
   }else{
     fuse_reply_err(req, ENOSYS);
   }
@@ -513,22 +502,11 @@ fuseserver_unlink(fuse_req_t req, fuse_ino_t parent, const char *name)
 
   yfs_client::status ret;
 
-  bool isexist;
-  ret = yfs->is_exist(par_inum, name, isexist);
-
-  if(ret != yfs_client::OK){
-    fuse_reply_err(req, ENOSYS);
-    return;
-  }
-
-  if(!isexist){
-    fuse_reply_err(req, ENOENT);
-    return;
-  }
-
   ret = yfs->unlink(par_inum, name);
   if(ret != yfs_client::OK){
     fuse_reply_err(req, ENOSYS);
+  }else if(ret == yfs_client::NOENT){
+    fuse_reply_err(req, ENOENT);
   }else{
     fuse_reply_err(req, 0);
   }

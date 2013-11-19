@@ -7,6 +7,7 @@
 #include <iostream>
 #include <stdio.h>
 #include "tprintf.h"
+#include <unistd.h>
 
 
 static void *
@@ -23,6 +24,7 @@ release_thread(void * t){
   return 0;
 }
 
+
 lock_client_cache::lock_client_cache(std::string xdst, 
 				     class lock_release_user *_lu)
   : lock_client(xdst), lu(_lu)
@@ -36,6 +38,7 @@ lock_client_cache::lock_client_cache(std::string xdst,
   std::ostringstream host;
   host << hname << ":" << rlsrpc->port();
   id = host.str();
+
   pthread_mutex_init(&retry_mutex, NULL);
   pthread_mutex_init(&revoke_mutex, NULL);
   pthread_cond_init(&retry_threadhold, NULL);
@@ -53,6 +56,7 @@ lock_client_cache::lock_client_cache(std::string xdst,
   if(rc){
     tprintf("Error in creating revoke thread\n");
   }
+
 }
 
 lock_protocol::status
@@ -63,8 +67,7 @@ lock_client_cache::acquire(lock_protocol::lockid_t lid)
   
   std::map<lock_protocol::lockid_t, lock_client_cache::client_state>::iterator it = client_state_map.find(lid);
   if(it == client_state_map.end()){
-    pthread_cond_init(&lock_threadhold_map[lid], NULL);
-    // pthread_cond_init(&acquire_threadhold_map[lid], NULL);
+    pthread_cond_init(&acquire_threadhold_map[lid], NULL);
     pthread_cond_init(&revoke_threadhold_map[lid], NULL);
     // pthread_cond_init(&retry_threadhold_map[lid], NULL);
     pthread_mutex_init(&mutex_map[lid], NULL);
@@ -79,6 +82,7 @@ lock_client_cache::acquire(lock_protocol::lockid_t lid)
   while(true){
     if(client_state_map[lid] == NONE){
       tprintf("Acquire: status is NONE, tid: %lu lid: %llu\n", pthread_self(), lid);
+      flush_map[lid] = false;
       client_state_map[lid] = ACQUIRING;
       ret = cl->call(lock_protocol::acquire, lid, id, r);
       tprintf("Acquire: call server, tid: %lu, id: %s\n", pthread_self(), id.c_str());
@@ -89,7 +93,7 @@ lock_client_cache::acquire(lock_protocol::lockid_t lid)
       }else if(ret == lock_protocol::RETRY){
         tprintf("Acquire: server return RETRY\n");
         client_state_map[lid] = ACQUIRING;
-        pthread_cond_wait(&lock_threadhold_map[lid], &mutex_map[lid]);
+        pthread_cond_wait(&acquire_threadhold_map[lid], &mutex_map[lid]);
         tprintf("Acquire: awake from retry\n");
         if(client_state_map[lid] == FREE){
           goto lock;
@@ -103,7 +107,7 @@ lock_client_cache::acquire(lock_protocol::lockid_t lid)
       goto lock;
     }else{
       tprintf("Acquire: wait for release to release lock lid: %llu\n", lid);
-      pthread_cond_wait(&lock_threadhold_map[lid], &mutex_map[lid]);
+      pthread_cond_wait(&acquire_threadhold_map[lid], &mutex_map[lid]);
       tprintf("Acquire: awake from release()\n");
       if(client_state_map[lid] == FREE){
         goto lock;
@@ -116,14 +120,19 @@ lock_client_cache::acquire(lock_protocol::lockid_t lid)
 
 lock:
   client_state_map[lid] = LOCKED;
-  tprintf("Acquire: grant lock, tid: %lu, id: %s\n", pthread_self(), id.c_str());
+  flush_map[lid] = true;
+  tprintf("Acquire: grant lock, tid: %lu, id: %s lid: %llu \n", pthread_self(), id.c_str(), lid);
   pthread_mutex_unlock(&mutex_map[lid]);
+
   return lock_protocol::OK;
 }
 
 lock_protocol::status
 lock_client_cache::release(lock_protocol::lockid_t lid)
 {
+
+  // return lock_protocol::OK;
+
   lock_protocol::status ret = lock_protocol::OK;
   tprintf("Release: begin, tid: %lu lid: %llu\n", pthread_self(), lid);
   std::map<lock_protocol::lockid_t, lock_client_cache::client_state>::iterator it = client_state_map.find(lid);
@@ -136,7 +145,7 @@ lock_client_cache::release(lock_protocol::lockid_t lid)
       tprintf("Release: status is locked\n");
       client_state_map[lid] = FREE;
       tprintf("Release: signal acquire to obtain lock lid: %llu \n", lid);
-      pthread_cond_signal(&lock_threadhold_map[lid]);
+      pthread_cond_signal(&acquire_threadhold_map[lid]);
     }else{
       assert(client_state_map[lid] == RELEASING);
       tprintf("Release: waiting to release to server\n");
@@ -154,6 +163,7 @@ lock_client_cache::revoke_handler(lock_protocol::lockid_t lid,
                                   int &)
 {
   int ret = rlock_protocol::OK;
+  printf("revoke handler\n");
   pthread_mutex_lock(&revoke_mutex);
   release_lists.push_back(lid);
   pthread_cond_signal(&revoke_threadhold);
@@ -193,7 +203,7 @@ lock_client_cache::retry_loop(){
       client_state_map[lid] = FREE;
       tprintf("Retry loop: acquire succeed, set state to FREE lid: %llu id: %s\n", lid, id.c_str());
       tprintf("Retry loop: signal acquire thread retry succeed lid: %llu \n", lid);
-      pthread_cond_signal(&lock_threadhold_map[lid]);
+      pthread_cond_signal(&acquire_threadhold_map[lid]);
       pthread_mutex_unlock(&mutex_map[lid]);
     }
     pthread_mutex_unlock(&retry_mutex);
@@ -222,11 +232,22 @@ lock_client_cache::release_loop(){
         assert(client_state_map[lid] == FREE);
       }
 
+      // call extent client to flush
+      // if(flush_map[lid]){
+      //   tprintf("FLUSH lid: %llu \n", lid);
+      //   lu->dorelease(lid);
+      // }else{
+      //   tprintf("FLUSH no need to flush lid: %llu \n", lid);
+      // }
+
+      tprintf("FLUSH lid: %llu \n", lid);
+      lu->dorelease(lid);
+      // sleep();
+
       lock_protocol::status ret = cl->call(lock_protocol::release, lid, id, r);
       tprintf("Release loop: call release, tid: %lu, id: %s\n", pthread_self(), id.c_str());
       assert(ret == lock_protocol::OK);
       client_state_map[lid] = NONE;
-      pthread_cond_signal(&lock_threadhold_map[lid]);
       pthread_mutex_unlock(&mutex_map[lid]);
     }
 

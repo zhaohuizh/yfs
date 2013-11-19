@@ -665,7 +665,7 @@ rpcs::checkduplicate_and_update(unsigned int clt_nonce, unsigned int xid,
 	ScopedLock rwl(&reply_window_m_);
 
   // You fill this in for Lab 1.
-  rpcs::rpcstate_t ret;
+  // rpcs::rpcstate_t ret;
   list<reply_t> &records = reply_window_[clt_nonce];
   list<reply_t>::iterator it = records.begin();
   if(records.empty()){

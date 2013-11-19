@@ -5,15 +5,24 @@
 #include "lock_client.h"
 #include <string>
 #include <list>
-
-
-
 #include "lock_protocol.h"
 #include "lock_client_cache.h"
+
+class lock_release_user_impl : public lock_release_user{
+  private:
+    extent_client* ec;
+
+  public:
+    lock_release_user_impl(extent_client* ec);
+    // ~lock_release_user_impl();
+    void dorelease(lock_protocol::lockid_t);
+
+};
 
 class yfs_client {
   extent_client* ec;
   lock_client_cache* lc;
+  lock_release_user_impl* lru;
   
  public:
 
